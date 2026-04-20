@@ -2,10 +2,12 @@ FROM eclipse-temurin:17-jdk
 
 WORKDIR /app
 
-# Copy entire project
 COPY . .
 
-# Build inside container
+# 🔥 ADD THIS LINE (fix permission)
+RUN chmod +x gradlew
+
+# Build
 RUN ./gradlew build
 
 # Run app
