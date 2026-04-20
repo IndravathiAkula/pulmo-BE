@@ -2,6 +2,11 @@ FROM eclipse-temurin:17-jdk
 
 WORKDIR /app
 
-COPY build/quarkus-app/ /app/
+# Copy entire project
+COPY . .
 
-CMD ["java","-jar","/app/quarkus-run.jar"]
+# Build inside container
+RUN ./gradlew build
+
+# Run app
+CMD ["java","-jar","build/quarkus-app/quarkus-run.jar"]
