@@ -34,6 +34,9 @@ public class LocalFileStorageService implements FileStorageService {
     @ConfigProperty(name = "storage.local.public-base-url", defaultValue = "/ebook/files")
     String publicBaseUrl;
 
+    @ConfigProperty(name = "app.backend-url", defaultValue = "https://pulmo-be.onrender.com")
+    String backendBaseUrl;
+
     private Path baseDirPath;
 
     @PostConstruct
@@ -89,7 +92,14 @@ public class LocalFileStorageService implements FileStorageService {
             actualSize = sizeBytes;
         }
 
-        String url = publicBaseUrl + "/" + key;
+        String base = publicBaseUrl;
+        if (base.startsWith("/")) {
+            String host = backendBaseUrl.endsWith("/")
+                    ? backendBaseUrl.substring(0, backendBaseUrl.length() - 1)
+                    : backendBaseUrl;
+            base = host + base;
+        }
+        String url = base + "/" + key;
         LOG.infof("Stored file: key=%s size=%d mime=%s", key, actualSize, contentType);
         return new StoredFile(key, url, contentType, actualSize, kind);
     }

@@ -48,6 +48,9 @@ public class BookService {
     @ConfigProperty(name = "storage.local.public-base-url", defaultValue = "/ebook/files")
     String publicFileBaseUrl;
 
+    @ConfigProperty(name = "app.backend-url", defaultValue = "https://pulmo-be.onrender.com")
+    String backendBaseUrl;
+
     public BookService(BookRepository bookRepository, CategoryRepository categoryRepository,
                        UserRepository userRepository, UserProfileRepository userProfileRepository,
                        EmailService emailService,
@@ -458,7 +461,14 @@ public class BookService {
 
     private String fileKeyToUrl(String key) {
         if (key == null || key.isBlank()) return null;
-        String prefix = publicFileBaseUrl.endsWith("/") ? publicFileBaseUrl : publicFileBaseUrl + "/";
+        String base = publicFileBaseUrl;
+        if (base.startsWith("/")) {
+            String host = backendBaseUrl.endsWith("/")
+                    ? backendBaseUrl.substring(0, backendBaseUrl.length() - 1)
+                    : backendBaseUrl;
+            base = host + base;
+        }
+        String prefix = base.endsWith("/") ? base : base + "/";
         return prefix + key;
     }
 
