@@ -1,0 +1,16 @@
+package com.ebook.auth.enums;
+
+public enum EventType {
+    LOGIN_SUCCESS,
+    LOGIN_FAILED,
+    LOGOUT,
+    TOKEN_REFRESH,
+    PASSWORD_CHANGE,
+    PASSWORD_RESET,
+    FORGOT_PASSWORD,
+    EMAIL_VERIFIED,
+    REGISTER,
+    AUTHOR_DEACTIVATED,
+    AUTHOR_ACTIVATED,
+    AUTHOR_UPDATED
+}
