@@ -95,4 +95,14 @@ public class ConfigService {
             cache.remove(key);
         });
     }
+
+    @Transactional
+    public ConfigParam updateValue(String key, String value) {
+        ConfigParam param = configParamRepository.findByKey(key)
+                .orElseThrow(() -> new IllegalArgumentException("Config key not found: " + key));
+        param.setValue(value);
+        configParamRepository.save(param);
+        cache.put(key, value);
+        return param;
+    }
 }

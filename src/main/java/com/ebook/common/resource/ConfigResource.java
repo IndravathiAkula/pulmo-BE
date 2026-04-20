@@ -54,6 +54,20 @@ public class ConfigResource {
         return Response.ok(ApiResponse.success(null, "Config cache refreshed")).build();
     }
 
+    @PUT
+    @Path("/params/{key}")
+    @RolesAllowed({"ADMIN"})
+    public Response updateParam(@PathParam("key") String key, java.util.Map<String, String> body) {
+        String value = body != null ? body.get("value") : null;
+        if (value == null) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error("Field 'value' is required"))
+                    .build();
+        }
+        ConfigParam updated = configService.updateValue(key, value);
+        return Response.ok(ApiResponse.success(toResponse(updated), "Config param updated")).build();
+    }
+
     private ConfigParamResponse toResponse(ConfigParam param) {
         return ConfigParamResponse.builder()
                 .name(param.getName())

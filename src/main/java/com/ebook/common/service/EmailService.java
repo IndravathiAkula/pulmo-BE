@@ -19,7 +19,7 @@ public class EmailService {
     }
 
     public void sendEmailVerification(String toEmail, String rawToken) {
-        String frontendUrl = configService.getString("app.frontend-url", "http://localhost:3000");
+        String frontendUrl = configService.getString("app.frontend-url", "https://pulmo-fe.onrender.com");
         String verifyLink = frontendUrl + "/verify-email?token=" + rawToken;
 
         String html = """
@@ -45,7 +45,7 @@ public class EmailService {
     }
 
     public void sendPasswordReset(String toEmail, String rawToken) {
-        String frontendUrl = configService.getString("app.frontend-url", "http://localhost:3000");
+        String frontendUrl = configService.getString("app.frontend-url", "https://pulmo-fe.onrender.com");
         String resetLink = frontendUrl + "/reset-password?token=" + rawToken;
 
         String html = """
@@ -71,7 +71,7 @@ public class EmailService {
     }
 
     public void sendAuthorCredentials(String toEmail, String rawPassword) {
-        String frontendUrl = configService.getString("app.frontend-url", "http://localhost:3000");
+        String frontendUrl = configService.getString("app.frontend-url", "https://pulmo-fe.onrender.com");
         String loginLink = frontendUrl + "/login";
 
         String html = """
@@ -101,7 +101,7 @@ public class EmailService {
 
     public void sendBookApprovalRequest(String bookTitle, String authorEmail, String action, String bookId) {
         String adminEmail = configService.getString("app.admin-email", "taskt600@gmail.com");
-        String frontendUrl = configService.getString("app.frontend-url", "http://localhost:3000");
+        String frontendUrl = configService.getString("app.frontend-url", "https://pulmo-fe.onrender.com");
         String reviewLink = frontendUrl + "/dashboard/admin/books/" + bookId;
 
         String actionColor = switch (action) {

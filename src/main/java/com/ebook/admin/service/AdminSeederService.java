@@ -138,7 +138,7 @@ public class AdminSeederService {
                 new ConfigParam("Email Verification Token Expiry (hours)", "auth.email-verification-expiry-hours", "24", "24", "INTEGER"),
                 new ConfigParam("JWT Access Token TTL (seconds)", "auth.jwt-ttl-seconds", "900", "900", "LONG"),
                 new ConfigParam("Session Expiry (days)", "auth.session-expiry-days", "30", "30", "INTEGER"),
-                new ConfigParam("Frontend Base URL", "app.frontend-url", "http://localhost:3000", "http://localhost:3000", "STRING"),
+                new ConfigParam("Frontend Base URL", "app.frontend-url", "https://pulmo-fe.onrender.com", "https://pulmo-fe.onrender.com", "STRING"),
                 new ConfigParam("Admin Email for Notifications", "app.admin-email", "taskt600@gmail.com", "taskt600@gmail.com", "STRING")
         );
 

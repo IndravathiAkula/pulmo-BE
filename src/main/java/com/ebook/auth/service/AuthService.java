@@ -91,7 +91,7 @@ public class AuthService {
         User user = new User();
         user.setEmail(request.getEmail());
         user.setPasswordHash(passwordService.hashPassword(request.getPassword()));
-        user.setEmailVerified(false);
+        user.setEmailVerified(true);
         user.setUserType(userType);
         user.setStatus(UserStatus.ACTIVE);
         userRepository.save(user);
@@ -107,8 +107,6 @@ public class AuthService {
         userRoleRepository.save(userRole);
 
         userProfileService.createProfile(user, request.getFirstName(), request.getLastName());
-
-        sendEmailVerificationToken(user);
 
         auditService.logEvent(user.getId(), EventType.REGISTER, ipAddress,
                 MetadataUtil.build("email", request.getEmail()));
