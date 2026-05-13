@@ -3,6 +3,7 @@ package com.ebook.user.service;
 import com.ebook.user.entity.User;
 import com.ebook.auth.repository.UserRepository;
 import com.ebook.common.exception.ResourceNotFoundException;
+import com.ebook.common.storage.FileKeyUtil;
 import com.ebook.user.dto.UpdateProfileRequest;
 import com.ebook.user.dto.UserProfileResponse;
 import com.ebook.user.entity.UserProfile;
@@ -56,7 +57,7 @@ public class UserProfileService {
         profile.setDesignation(request.getDesignation());
         profile.setDescription(request.getDescription());
         profile.setQualification(request.getQualification());
-        profile.setProfileUrl(request.getProfileUrl());
+        profile.setProfileUrl(FileKeyUtil.toKey(request.getProfileUrl()));
         userProfileRepository.update(profile);
 
         LOG.infof("Profile updated for user: %s", userId);
@@ -74,7 +75,7 @@ public class UserProfileService {
                 .designation(profile.getDesignation())
                 .description(profile.getDescription())
                 .qualification(profile.getQualification())
-                .profileUrl(profile.getProfileUrl())
+                .profileUrl(FileKeyUtil.toKey(profile.getProfileUrl()))
                 .isActive(profile.isActive())
                 .createdAt(profile.getCreatedAt())
                 .updatedAt(profile.getUpdatedAt())

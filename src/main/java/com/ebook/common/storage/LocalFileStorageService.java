@@ -31,12 +31,6 @@ public class LocalFileStorageService implements FileStorageService {
     @ConfigProperty(name = "storage.local.base-dir")
     String baseDir;
 
-    @ConfigProperty(name = "storage.local.public-base-url", defaultValue = "/ebook/files")
-    String publicBaseUrl;
-
-    @ConfigProperty(name = "app.backend-url", defaultValue = "http://localhost:8080/ebook")
-    String backendBaseUrl;
-
     private Path baseDirPath;
 
     @PostConstruct
@@ -50,7 +44,7 @@ public class LocalFileStorageService implements FileStorageService {
         } catch (IOException e) {
             throw new InternalServerException("Failed to initialize storage directory: " + baseDirPath, e);
         }
-        LOG.infof("Local file storage initialized: %s (public=%s)", baseDirPath, publicBaseUrl);
+        LOG.infof("Local file storage initialized: %s", baseDirPath);
     }
 
     @Override
@@ -92,16 +86,8 @@ public class LocalFileStorageService implements FileStorageService {
             actualSize = sizeBytes;
         }
 
-        String base = publicBaseUrl;
-        if (base.startsWith("/")) {
-            String host = backendBaseUrl.endsWith("/")
-                    ? backendBaseUrl.substring(0, backendBaseUrl.length() - 1)
-                    : backendBaseUrl;
-            base = host + base;
-        }
-        String url = base + "/" + key;
         LOG.infof("Stored file: key=%s size=%d mime=%s", key, actualSize, contentType);
-        return new StoredFile(key, url, contentType, actualSize, kind);
+        return new StoredFile(key, contentType, actualSize, kind);
     }
 
     @Override

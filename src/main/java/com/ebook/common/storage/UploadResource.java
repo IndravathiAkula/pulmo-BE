@@ -66,7 +66,6 @@ public class UploadResource {
         }
 
         UploadResponse body = UploadResponse.builder()
-                .url(stored.url())
                 .key(stored.key())
                 .contentType(stored.contentType())
                 .sizeBytes(stored.sizeBytes())

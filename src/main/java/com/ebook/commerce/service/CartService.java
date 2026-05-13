@@ -9,6 +9,7 @@ import com.ebook.commerce.repository.CartItemRepository;
 import com.ebook.common.exception.ConflictException;
 import com.ebook.common.exception.ResourceNotFoundException;
 import com.ebook.common.exception.ValidationException;
+import com.ebook.common.storage.FileKeyUtil;
 import com.ebook.auth.repository.UserRepository;
 import com.ebook.user.entity.User;
 import com.ebook.user.entity.UserProfile;
@@ -224,7 +225,7 @@ public class CartService {
                 .title(book.getTitle())
                 .authorName(authorName)
                 .categoryName(book.getCategory().getName())
-                .coverUrl(book.getCoverUrl())
+                .coverUrl(FileKeyUtil.toKey(book.getCoverUrl()))
                 .price(book.getPrice())
                 .discount(book.getDiscount() != null ? book.getDiscount() : BigDecimal.ZERO)
                 .effectivePrice(effectivePrice)

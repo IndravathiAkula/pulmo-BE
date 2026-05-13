@@ -20,12 +20,12 @@ import com.ebook.common.exception.ForbiddenException;
 import com.ebook.common.exception.ResourceNotFoundException;
 import com.ebook.common.exception.ValidationException;
 import com.ebook.common.service.EmailService;
+import com.ebook.common.storage.FileKeyUtil;
 import com.ebook.user.entity.User;
 import com.ebook.user.entity.UserProfile;
 import com.ebook.user.repository.UserProfileRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
 import java.math.BigDecimal;
@@ -49,12 +49,6 @@ public class BookService {
     private final UserProfileRepository userProfileRepository;
     private final EmailService emailService;
     private final BookApprovalLogRepository approvalLogRepository;
-
-    @ConfigProperty(name = "storage.local.public-base-url", defaultValue = "/ebook/files")
-    String publicFileBaseUrl;
-
-    @ConfigProperty(name = "app.backend-url", defaultValue = "http://localhost:8080/ebook")
-    String backendBaseUrl;
 
     public BookService(BookRepository bookRepository, CategoryRepository categoryRepository,
                        UserRepository userRepository, UserProfileRepository userProfileRepository,
@@ -82,10 +76,10 @@ public class BookService {
         book.setDiscount(request.getDiscount() != null ? request.getDiscount() : BigDecimal.ZERO);
         book.setKeywords(request.getKeywords());
         book.setPages(request.getPages());
-        book.setCoverUrl(request.getCoverUrl());
-        book.setPreviewUrl(request.getPreviewUrl());
+        book.setCoverUrl(FileKeyUtil.toKey(request.getCoverUrl()));
+        book.setPreviewUrl(FileKeyUtil.toKey(request.getPreviewUrl()));
         book.setVersionNumber(request.getVersionNumber());
-        book.setFileKey(urlToFileKey(request.getBookUrl()));
+        book.setFileKey(FileKeyUtil.toKey(request.getBookUrl()));
         book.setCategory(category);
         book.setAuthor(author);
         book.setStatus(BookStatus.PENDING);
@@ -108,14 +102,16 @@ public class BookService {
         BookStatus priorStatus = book.getStatus();
         boolean wasRejected = priorStatus == BookStatus.REJECTED;
 
-        String newFileKey = urlToFileKey(request.getBookUrl());
+        String newFileKey = FileKeyUtil.toKey(request.getBookUrl());
+        String newCoverKey = FileKeyUtil.toKey(request.getCoverUrl());
+        String newPreviewKey = FileKeyUtil.toKey(request.getPreviewUrl());
 
         // Spec §4.5: substantive changes on an APPROVED book re-queue it for review; cosmetic ones don't.
         boolean substantiveChange =
                 !safeEquals(book.getTitle(), request.getTitle())
                 || !safeEquals(book.getDescription(), request.getDescription())
                 || !safeEquals(book.getPrice(), request.getPrice())
-                || !safeEquals(book.getPreviewUrl(), request.getPreviewUrl())
+                || !safeEquals(book.getPreviewUrl(), newPreviewKey)
                 || !safeEquals(book.getFileKey(), newFileKey)
                 || !safeEquals(book.getCategory().getId(), request.getCategoryId());
 
@@ -125,8 +121,8 @@ public class BookService {
         book.setDiscount(request.getDiscount() != null ? request.getDiscount() : BigDecimal.ZERO);
         book.setKeywords(request.getKeywords());
         book.setPages(request.getPages());
-        book.setCoverUrl(request.getCoverUrl());
-        book.setPreviewUrl(request.getPreviewUrl());
+        book.setCoverUrl(newCoverKey);
+        book.setPreviewUrl(newPreviewKey);
         book.setVersionNumber(request.getVersionNumber());
         book.setFileKey(newFileKey);
         book.setCategory(category);
@@ -460,8 +456,8 @@ public class BookService {
                 .keywords(book.getKeywords())
                 .publishedDate(book.getPublishedDate())
                 .pages(book.getPages())
-                .coverUrl(book.getCoverUrl())
-                .previewUrl(book.getPreviewUrl())
+                .coverUrl(FileKeyUtil.toKey(book.getCoverUrl()))
+                .previewUrl(FileKeyUtil.toKey(book.getPreviewUrl()))
                 .bookUrl(book.getFileKey())
                 .versionNumber(book.getVersionNumber())
                 .isPublished(book.isPublished())
@@ -495,8 +491,8 @@ public class BookService {
                 .keywords(book.getKeywords())
                 .publishedDate(book.getPublishedDate())
                 .pages(book.getPages())
-                .coverUrl(book.getCoverUrl())
-                .previewUrl(book.getPreviewUrl())
+                .coverUrl(FileKeyUtil.toKey(book.getCoverUrl()))
+                .previewUrl(FileKeyUtil.toKey(book.getPreviewUrl()))
                 .bookUrl(book.getFileKey())
                 .versionNumber(book.getVersionNumber())
                 .isPublished(book.isPublished())
@@ -509,42 +505,6 @@ public class BookService {
                 .createdAt(book.getCreatedAt())
                 .updatedAt(book.getUpdatedAt())
                 .build();
-    }
-
-    /**
-     * Extracts the storage key from a public file URL the FE sends us.
-     * Accepts either a relative path ({@code /ebook/files/books/uuid.pdf}) or
-     * an absolute URL pointing at the same backend. Returns {@code null} for
-     * blank input or unrecognized shapes — callers should treat null as "no
-     * book file attached", which is the correct state for a pending book.
-     */
-    private String urlToFileKey(String url) {
-        if (url == null || url.isBlank()) return null;
-        String trimmed = url.trim();
-        String prefix = publicFileBaseUrl.endsWith("/") ? publicFileBaseUrl : publicFileBaseUrl + "/";
-        int idx = trimmed.indexOf(prefix);
-        if (idx >= 0) {
-            return trimmed.substring(idx + prefix.length());
-        }
-        // Already a bare key? (books/abc.pdf)
-        if (trimmed.startsWith("books/") || trimmed.startsWith("covers/")
-                || trimmed.startsWith("previews/") || trimmed.startsWith("profiles/")) {
-            return trimmed;
-        }
-        return null;
-    }
-
-    private String fileKeyToUrl(String key) {
-        if (key == null || key.isBlank()) return null;
-        String base = publicFileBaseUrl;
-        if (base.startsWith("/")) {
-            String host = backendBaseUrl.endsWith("/")
-                    ? backendBaseUrl.substring(0, backendBaseUrl.length() - 1)
-                    : backendBaseUrl;
-            base = host + base;
-        }
-        String prefix = base.endsWith("/") ? base : base + "/";
-        return prefix + key;
     }
 
     private BookApprovalLogResponse toLogResponse(BookApprovalLog log) {

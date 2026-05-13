@@ -19,6 +19,7 @@ import com.ebook.common.exception.ConflictException;
 import com.ebook.common.exception.ForbiddenException;
 import com.ebook.common.exception.ResourceNotFoundException;
 import com.ebook.common.exception.ValidationException;
+import com.ebook.common.storage.FileKeyUtil;
 import com.ebook.user.entity.User;
 import com.ebook.user.entity.UserBook;
 import com.ebook.user.entity.UserProfile;
@@ -297,7 +298,7 @@ public class PaymentService {
                 .title(book.getTitle())
                 .authorName(authorName(book, authorNames))
                 .categoryName(book.getCategory().getName())
-                .coverUrl(book.getCoverUrl())
+                .coverUrl(FileKeyUtil.toKey(book.getCoverUrl()))
                 .price(tx.getPrice())
                 .discount(discount)
                 .effectivePrice(tx.getEffectivePrice())
@@ -344,7 +345,7 @@ public class PaymentService {
                 .title(book.getTitle())
                 .authorName(authorName(book, authorNames))
                 .categoryName(book.getCategory().getName())
-                .coverUrl(book.getCoverUrl())
+                .coverUrl(FileKeyUtil.toKey(book.getCoverUrl()))
                 .price(userBook.getPrice())
                 .discount(discount)
                 .effectivePrice(effective)

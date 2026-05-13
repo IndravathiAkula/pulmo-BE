@@ -23,6 +23,7 @@ import com.ebook.common.exception.ResourceNotFoundException;
 import com.ebook.common.exception.ValidationException;
 import com.ebook.common.service.ConfigService;
 import com.ebook.common.service.EmailService;
+import com.ebook.common.storage.FileKeyUtil;
 import com.ebook.common.util.MetadataUtil;
 import com.ebook.common.util.PasswordGenerator;
 import com.ebook.common.util.TokenHashUtil;
@@ -108,7 +109,7 @@ public class AdminAuthorService {
         profile.setDesignation(request.getDesignation());
         profile.setDescription(request.getDescription());
         profile.setQualification(request.getQualification());
-        profile.setProfileUrl(request.getProfileUrl());
+        profile.setProfileUrl(FileKeyUtil.toKey(request.getProfileUrl()));
         profile.setActive(true);
         userProfileRepository.save(profile);
 
@@ -140,7 +141,7 @@ public class AdminAuthorService {
         profile.setDesignation(request.getDesignation());
         profile.setDescription(request.getDescription());
         profile.setQualification(request.getQualification());
-        profile.setProfileUrl(request.getProfileUrl());
+        profile.setProfileUrl(FileKeyUtil.toKey(request.getProfileUrl()));
         userProfileRepository.update(profile);
 
         auditService.logEvent(authorId, EventType.AUTHOR_UPDATED, ipAddress,
@@ -288,7 +289,7 @@ public class AdminAuthorService {
                 .designation(profile.getDesignation())
                 .description(profile.getDescription())
                 .qualification(profile.getQualification())
-                .profileUrl(profile.getProfileUrl())
+                .profileUrl(FileKeyUtil.toKey(profile.getProfileUrl()))
                 .emailVerified(user.isEmailVerified())
                 .isActive(profile.isActive())
                 .status(user.getStatus().name())
