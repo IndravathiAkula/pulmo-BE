@@ -82,9 +82,15 @@ public class AdminAuthorService {
             throw new ConflictException("Email is already registered");
         }
 
+        // Generate the temporary password here (not on email-verify) so that a leaked
+        // verification link can no longer silently rotate the author's credentials.
+        // The raw password is emailed alongside the verification link; the author logs in
+        // with it after verifying the email, then changes it.
+        String rawPassword = PasswordGenerator.generate();
+
         User user = new User();
         user.setEmail(request.getEmail());
-        user.setPasswordHash(passwordService.hashPassword(PasswordGenerator.generate()));
+        user.setPasswordHash(passwordService.hashPassword(rawPassword));
         user.setEmailVerified(false);
         user.setUserType(UserType.AUTHOR);
         user.setStatus(UserStatus.ACTIVE);
@@ -107,6 +113,12 @@ public class AdminAuthorService {
         userProfileRepository.save(profile);
 
         sendVerificationEmail(user);
+
+        // Email the temporary credentials now (separate from verification email). The author
+        // needs the password after they click "verify" — sending it at creation time avoids
+        // the prior foot-gun where the verify endpoint regenerated passwords for any caller
+        // who had a valid token (P1 #14).
+        emailService.sendAuthorCredentials(user.getEmail(), rawPassword);
 
         auditService.logEvent(user.getId(), EventType.REGISTER, ipAddress,
                 MetadataUtil.build("createdBy", "admin", "userType", "AUTHOR"));

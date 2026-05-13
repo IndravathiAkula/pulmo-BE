@@ -33,19 +33,34 @@ public class TokenCleanupScheduler {
         this.emailVerificationTokenRepository = emailVerificationTokenRepository;
     }
 
+    // No outer @Transactional — each repository method already declares its own @Transactional
+    // so the three deletes commit (or fail) independently. Wrapping the whole scheduler body
+    // in one transaction means a single bad delete rolls all three back every hour, which
+    // never recovers; per-call try/catch keeps the other cleanups moving even if one is stuck.
     @Scheduled(every = "1h")
-    @Transactional
     void cleanupExpiredData() {
         Instant sessionThreshold = Instant.now().minus(30, ChronoUnit.DAYS);
         Instant tokenThreshold = Instant.now().minus(7, ChronoUnit.DAYS);
 
-        long sessions = sessionRepository.deleteExpiredOrRevokedBefore(sessionThreshold);
-        long resetTokens = passwordResetTokenRepository.deleteExpiredOrUsedBefore(tokenThreshold);
-        long verificationTokens = emailVerificationTokenRepository.deleteExpiredOrUsedBefore(tokenThreshold);
+        long sessions = safeDelete("sessions",
+                () -> sessionRepository.deleteExpiredOrRevokedBefore(sessionThreshold));
+        long resetTokens = safeDelete("password-reset tokens",
+                () -> passwordResetTokenRepository.deleteExpiredOrUsedBefore(tokenThreshold));
+        long verificationTokens = safeDelete("email-verification tokens",
+                () -> emailVerificationTokenRepository.deleteExpiredOrUsedBefore(tokenThreshold));
 
         if (sessions > 0 || resetTokens > 0 || verificationTokens > 0) {
             LOG.infof("Cleanup complete — sessions: %d, reset tokens: %d, verification tokens: %d",
                     sessions, resetTokens, verificationTokens);
+        }
+    }
+
+    private long safeDelete(String label, java.util.function.LongSupplier op) {
+        try {
+            return op.getAsLong();
+        } catch (Exception e) {
+            LOG.errorf(e, "Scheduled cleanup failed for %s — will retry at next tick", label);
+            return 0L;
         }
     }
 }

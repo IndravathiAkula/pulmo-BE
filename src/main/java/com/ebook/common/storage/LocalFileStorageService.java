@@ -34,7 +34,7 @@ public class LocalFileStorageService implements FileStorageService {
     @ConfigProperty(name = "storage.local.public-base-url", defaultValue = "/ebook/files")
     String publicBaseUrl;
 
-    @ConfigProperty(name = "app.backend-url", defaultValue = "https://pulmo-be.onrender.com")
+    @ConfigProperty(name = "app.backend-url", defaultValue = "http://localhost:8080/ebook")
     String backendBaseUrl;
 
     private Path baseDirPath;

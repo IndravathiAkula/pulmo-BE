@@ -8,7 +8,7 @@ import jakarta.transaction.Transactional;
 import java.util.Optional;
 
 @ApplicationScoped
-public class DeviceService {
+public class    DeviceService {
 
     private final DeviceRepository deviceRepository;
 

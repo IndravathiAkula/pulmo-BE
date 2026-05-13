@@ -13,6 +13,7 @@ import com.ebook.catalog.dto.BookApprovalLogResponse;
 import com.ebook.common.dto.ApiResponse;
 import com.ebook.common.dto.PageRequest;
 import com.ebook.common.exception.UnauthorizedException;
+import com.ebook.common.util.ClientIpResolver;
 import jakarta.annotation.security.PermitAll;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
@@ -39,6 +40,9 @@ public class AdminResource {
 
     @ConfigProperty(name = "app.seed-secret", defaultValue = "ebookhub-seed-secret-2026")
     String seedSecret;
+
+    @ConfigProperty(name = "security.trust-forwarded-for", defaultValue = "true")
+    boolean trustForwardedFor;
 
     public AdminResource(AdminSeederService seederService, AdminAuthorService authorService,
                          BookService bookService, JsonWebToken jwt) {
@@ -218,10 +222,6 @@ public class AdminResource {
     }
 
     private String extractClientIp(HttpHeaders headers) {
-        String xForwardedFor = headers.getHeaderString("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-        return "unknown";
+        return ClientIpResolver.resolve(headers.getHeaderString("X-Forwarded-For"), trustForwardedFor);
     }
 }

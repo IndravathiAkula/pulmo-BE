@@ -11,7 +11,9 @@ import com.ebook.common.exception.ResourceNotFoundException;
 import com.ebook.common.exception.ValidationException;
 import com.ebook.auth.repository.UserRepository;
 import com.ebook.user.entity.User;
+import com.ebook.user.entity.UserProfile;
 import com.ebook.user.repository.UserBookRepository;
+import com.ebook.user.repository.UserProfileRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import org.jboss.logging.Logger;
@@ -19,7 +21,12 @@ import org.jboss.logging.Logger;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @ApplicationScoped
@@ -31,15 +38,18 @@ public class CartService {
     private final BookRepository bookRepository;
     private final UserRepository userRepository;
     private final UserBookRepository userBookRepository;
+    private final UserProfileRepository userProfileRepository;
     private final PaymentService paymentService;
 
     public CartService(CartItemRepository cartItemRepository, BookRepository bookRepository,
                        UserRepository userRepository, UserBookRepository userBookRepository,
+                       UserProfileRepository userProfileRepository,
                        PaymentService paymentService) {
         this.cartItemRepository = cartItemRepository;
         this.bookRepository = bookRepository;
         this.userRepository = userRepository;
         this.userBookRepository = userBookRepository;
+        this.userProfileRepository = userProfileRepository;
         this.paymentService = paymentService;
     }
 
@@ -62,9 +72,10 @@ public class CartService {
             cartItemRepository.deleteByUserAndBook(userId, bookId);
             throw new ConflictException("You already own this book");
         }
-        CartItem existing = cartItemRepository.findByUserAndBook(userId, bookId).orElse(null);
-        if (existing != null) {
-            return toCartItemResponse(existing);
+        // Duplicate add: surface explicitly as 409 so the FE can show "already in your cart"
+        // instead of silently pretending the click worked (P2 #34).
+        if (cartItemRepository.findByUserAndBook(userId, bookId).isPresent()) {
+            throw new ConflictException("This book is already in your cart");
         }
 
         CartItem cartItem = new CartItem();
@@ -83,16 +94,23 @@ public class CartService {
     public CartResponse getCart(UUID userId) {
         List<CartItem> items = cartItemRepository.findByUserId(userId);
 
-        List<CartItemResponse> validItems = new ArrayList<>();
-        BigDecimal totalPrice = BigDecimal.ZERO;
-
+        // Collect books passing availability filters so we can batch-load author names once.
+        List<CartItem> validCartItems = new ArrayList<>();
+        List<Book> validBooks = new ArrayList<>();
         for (CartItem item : items) {
             Book book = item.getBook();
-            // Skip items where the book is no longer available or already owned
             if (book.getStatus() != BookStatus.APPROVED || !book.isPublished()) continue;
             if (userBookRepository.existsByUserAndBook(userId, book.getId())) continue;
+            validCartItems.add(item);
+            validBooks.add(book);
+        }
 
-            CartItemResponse response = toCartItemResponse(item);
+        Map<UUID, String> authorNames = batchAuthorNames(validBooks);
+
+        List<CartItemResponse> validItems = new ArrayList<>();
+        BigDecimal totalPrice = BigDecimal.ZERO;
+        for (CartItem item : validCartItems) {
+            CartItemResponse response = toCartItemResponse(item, authorNames);
             validItems.add(response);
             totalPrice = totalPrice.add(response.getEffectivePrice());
         }
@@ -187,13 +205,24 @@ public class CartService {
     }
 
     private CartItemResponse toCartItemResponse(CartItem item) {
+        return toCartItemResponse(item, null);
+    }
+
+    private CartItemResponse toCartItemResponse(CartItem item, Map<UUID, String> authorNames) {
         Book book = item.getBook();
         BigDecimal effectivePrice = calculateEffectivePrice(book);
+        User author = book.getAuthor();
+        String authorName;
+        if (authorNames != null && author != null) {
+            authorName = authorNames.getOrDefault(author.getId(), author.getEmail());
+        } else {
+            authorName = resolveAuthorName(author);
+        }
 
         return CartItemResponse.builder()
                 .bookId(book.getId())
                 .title(book.getTitle())
-                .authorName(book.getAuthor().getEmail())
+                .authorName(authorName)
                 .categoryName(book.getCategory().getName())
                 .coverUrl(book.getCoverUrl())
                 .price(book.getPrice())
@@ -201,5 +230,43 @@ public class CartService {
                 .effectivePrice(effectivePrice)
                 .addedAt(item.getAddedAt())
                 .build();
+    }
+
+    private String resolveAuthorName(User author) {
+        if (author == null) return null;
+        return userProfileRepository.findByUserId(author.getId())
+                .map(this::fullName)
+                .filter(name -> !name.isBlank())
+                .orElse(author.getEmail());
+    }
+
+    private Map<UUID, String> batchAuthorNames(Collection<Book> books) {
+        if (books == null || books.isEmpty()) return Map.of();
+        Set<UUID> authorIds = new HashSet<>();
+        Map<UUID, String> fallbackEmails = new HashMap<>();
+        for (Book b : books) {
+            User author = b.getAuthor();
+            if (author == null) continue;
+            authorIds.add(author.getId());
+            fallbackEmails.putIfAbsent(author.getId(), author.getEmail());
+        }
+        Map<UUID, String> byId = new HashMap<>();
+        for (UserProfile p : userProfileRepository.findByUserIds(authorIds)) {
+            String name = fullName(p);
+            if (!name.isBlank()) {
+                byId.put(p.getUser().getId(), name);
+            }
+        }
+        Map<UUID, String> result = new HashMap<>();
+        for (UUID id : authorIds) {
+            result.put(id, byId.getOrDefault(id, fallbackEmails.get(id)));
+        }
+        return result;
+    }
+
+    private String fullName(UserProfile profile) {
+        String first = profile.getFirstName() == null ? "" : profile.getFirstName().trim();
+        String last = profile.getLastName() == null ? "" : profile.getLastName().trim();
+        return (first + " " + last).trim();
     }
 }

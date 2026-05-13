@@ -13,10 +13,18 @@ import org.hibernate.type.SqlTypes;
 @Entity
 @Getter
 @Setter
-@Table(name = "t_payment_history", indexes = {
-        @Index(name = "idx_payment_user_id", columnList = "user_id"),
-        @Index(name = "idx_payment_status", columnList = "status")
-})
+@Table(name = "t_payment_history",
+        indexes = {
+                @Index(name = "idx_payment_user_id", columnList = "user_id"),
+                @Index(name = "idx_payment_status", columnList = "status")
+        },
+        uniqueConstraints = {
+                // Enforces idempotency at the DB level: two concurrent checkouts with the same
+                // (user, idempotency-key) collapse to one successful row — the loser sees a
+                // ConstraintViolationException and the TX rolls back safely.
+                @UniqueConstraint(name = "uk_payment_user_idempotency",
+                        columnNames = { "user_id", "external_payment_id" })
+        })
 public class PaymentHistory extends BaseEntity {
 
     @Column(name = "external_payment_id")

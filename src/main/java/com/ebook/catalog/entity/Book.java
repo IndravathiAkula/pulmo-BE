@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.Check;
 
 @Entity
 @Getter
@@ -17,6 +18,9 @@ import lombok.Setter;
         @Index(name = "idx_book_is_published", columnList = "is_published"),
         @Index(name = "idx_book_status", columnList = "status")
 })
+// DB-level guardrail matching the DTO validation (@DecimalMin / @AssertTrue). Catches any
+// direct writes that bypass the API layer (admin SQL, migrations, replication skew).
+@Check(constraints = "price >= 0 AND discount >= 0 AND discount <= price")
 public class Book extends BaseEntity {
 
     @Column(name = "title", nullable = false)

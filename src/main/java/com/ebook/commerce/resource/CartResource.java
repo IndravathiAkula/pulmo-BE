@@ -4,6 +4,7 @@ import com.ebook.commerce.dto.*;
 import com.ebook.commerce.service.CartService;
 import com.ebook.common.dto.ApiResponse;
 import com.ebook.common.exception.UnauthorizedException;
+import com.ebook.common.util.ClientIpResolver;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
@@ -11,6 +12,7 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 
 import java.util.UUID;
@@ -23,6 +25,9 @@ public class CartResource {
 
     private final CartService cartService;
     private final JsonWebToken jwt;
+
+    @ConfigProperty(name = "security.trust-forwarded-for", defaultValue = "true")
+    boolean trustForwardedFor;
 
     public CartResource(CartService cartService, JsonWebToken jwt) {
         this.cartService = cartService;
@@ -79,10 +84,6 @@ public class CartResource {
     }
 
     private String extractClientIp(HttpHeaders headers) {
-        String xForwardedFor = headers.getHeaderString("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-        return "unknown";
+        return ClientIpResolver.resolve(headers.getHeaderString("X-Forwarded-For"), trustForwardedFor);
     }
 }

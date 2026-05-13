@@ -45,17 +45,26 @@ public class User extends BaseEntity {
     private Instant lockedUntil;
 
     // ── Relationships (owning side is the child) ──
+    // CascadeType.REMOVE + orphanRemoval ensures that deleting a User wipes its role
+    // assignments, active sessions, and registered devices. Without this the children
+    // become orphans (or the delete outright fails on FK constraints), leaving a
+    // broken "delete user" flow. Other child entities (CartItem, UserBook, tokens,
+    // audit logs) are not mapped on this side — a full deleteUser service must still
+    // clean those up explicitly before invoking the JPA delete.
 
     @JsonIgnore
-    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY,
+            cascade = CascadeType.REMOVE, orphanRemoval = true)
     private List<UserRole> userRoles = new ArrayList<>();
 
     @JsonIgnore
-    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY,
+            cascade = CascadeType.REMOVE, orphanRemoval = true)
     private List<Session> sessions = new ArrayList<>();
 
     @JsonIgnore
-    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY,
+            cascade = CascadeType.REMOVE, orphanRemoval = true)
     private List<Device> devices = new ArrayList<>();
 
 }

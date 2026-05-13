@@ -1,7 +1,12 @@
 package com.ebook.catalog.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
@@ -17,15 +22,20 @@ import java.util.UUID;
 public class UpdateBookRequest {
 
     @NotBlank(message = "Title is required")
+    @Size(max = 255, message = "Title must not exceed 255 characters")
     private String title;
 
+    @Size(max = 5000, message = "Description must not exceed 5000 characters")
     private String description;
 
     @NotNull(message = "Price is required")
+    @DecimalMin(value = "0.00", message = "Price must be zero or positive")
     private BigDecimal price;
 
+    @DecimalMin(value = "0.00", message = "Discount must be zero or positive")
     private BigDecimal discount;
 
+    @Size(max = 500, message = "Keywords must not exceed 500 characters")
     private String keywords;
 
     private Integer pages;
@@ -42,5 +52,15 @@ public class UpdateBookRequest {
     private UUID categoryId;
 
     /** Optional message to admin when resubmitting a rejected book */
+    @Size(max = 1000, message = "Message must not exceed 1000 characters")
     private String message;
+
+    /** P0 #4 — cross-field: discount cannot exceed price. Null discount is treated as zero. */
+    @JsonIgnore
+    @AssertTrue(message = "Discount must not exceed price")
+    public boolean isDiscountWithinPrice() {
+        if (price == null) return true;
+        BigDecimal d = discount == null ? BigDecimal.ZERO : discount;
+        return d.compareTo(price) <= 0;
+    }
 }

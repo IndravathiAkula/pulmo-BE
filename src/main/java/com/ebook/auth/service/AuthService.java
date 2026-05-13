@@ -13,7 +13,6 @@ import com.ebook.common.exception.ResourceNotFoundException;
 import com.ebook.common.exception.UnauthorizedException;
 import com.ebook.common.exception.ValidationException;
 import com.ebook.common.util.MetadataUtil;
-import com.ebook.common.util.PasswordGenerator;
 import com.ebook.common.util.TokenHashUtil;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
@@ -91,7 +90,7 @@ public class AuthService {
         User user = new User();
         user.setEmail(request.getEmail());
         user.setPasswordHash(passwordService.hashPassword(request.getPassword()));
-        user.setEmailVerified(true);
+        user.setEmailVerified(false);
         user.setUserType(userType);
         user.setStatus(UserStatus.ACTIVE);
         userRepository.save(user);
@@ -163,6 +162,24 @@ public class AuthService {
 
     @Transactional
     public TokenResponse refreshToken(RefreshRequest request, String ipAddress, String userAgent) {
+        // Reuse detection: if the token maps to a session that is *already revoked*, the
+        // token was rotated earlier and someone is replaying it. Treat as theft — revoke all
+        // of that user's sessions so the real user is forced to re-authenticate and the
+        // attacker can't keep using any other tokens they may have captured.
+        Optional<Session> anySession = sessionService.findAnySessionByToken(request.getRefreshToken());
+        if (anySession.isPresent() && anySession.get().isRevoked()) {
+            Session revokedSession = anySession.get();
+            UUID ownerId = revokedSession.getUser() != null ? revokedSession.getUser().getId() : null;
+            if (ownerId != null) {
+                sessionService.revokeAllUserSessions(ownerId);
+                auditService.logEvent(ownerId, EventType.LOGOUT, ipAddress,
+                        MetadataUtil.build("reason", "refresh_token_reuse_detected",
+                                "sessionId", revokedSession.getId().toString()));
+                LOG.warnf("Refresh-token reuse detected — revoked all sessions for user %s", ownerId);
+            }
+            throw new UnauthorizedException("Refresh token has been revoked. Please log in again.");
+        }
+
         Session session = sessionService.findValidSessionByToken(request.getRefreshToken())
                 .orElseThrow(() -> new UnauthorizedException("Invalid or expired refresh token"));
 
@@ -198,6 +215,12 @@ public class AuthService {
     public void logout(String refreshToken, UUID userId, String ipAddress) {
         Optional<Session> sessionOpt = sessionService.findValidSessionByToken(refreshToken);
         sessionOpt.ifPresent(session -> {
+            User owner = session.getUser();
+            if (owner == null || !owner.getId().equals(userId)) {
+                LOG.warnf("Logout attempt with session not owned by caller: caller=%s, session=%s",
+                        userId, session.getId());
+                return;
+            }
             sessionService.revokeSession(session.getId());
             auditService.logEvent(userId, EventType.LOGOUT, ipAddress,
                     MetadataUtil.build("sessionId", session.getId().toString()));
@@ -297,14 +320,10 @@ public class AuthService {
         token.setUsedAt(Instant.now());
         emailVerificationTokenRepository.update(token);
 
-        // For AUTHOR accounts (created by admin): generate a new password and send via email
-        if (user.getUserType() == UserType.AUTHOR) {
-            String rawPassword = PasswordGenerator.generate();
-            user.setPasswordHash(passwordService.hashPassword(rawPassword));
-            userRepository.update(user);
-            emailService.sendAuthorCredentials(user.getEmail(), rawPassword);
-            LOG.infof("Author credentials generated and sent: %s", user.getId());
-        }
+        // Password generation for AUTHOR accounts now happens in AdminAuthorService#createAuthor.
+        // Verifying the email no longer rotates credentials — otherwise any leaked verify link
+        // (email forwarding, web archive, MITM) could silently lock the author out of their
+        // account with no re-auth challenge (P1 #14).
 
         auditService.logEvent(user.getId(), EventType.EMAIL_VERIFIED, ipAddress,
                 MetadataUtil.build("email", user.getEmail()));

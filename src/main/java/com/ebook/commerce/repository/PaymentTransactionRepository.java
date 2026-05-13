@@ -4,6 +4,7 @@ import com.ebook.commerce.entity.PaymentTransaction;
 import com.ebook.common.repository.BaseRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -20,6 +21,19 @@ public class PaymentTransactionRepository extends BaseRepository<PaymentTransact
                                 "ORDER BY t.createdAt ASC",
                         PaymentTransaction.class)
                 .setParameter("paymentId", paymentId)
+                .getResultList();
+    }
+
+    public List<PaymentTransaction> findByPaymentIds(Collection<UUID> paymentIds) {
+        if (paymentIds == null || paymentIds.isEmpty()) return List.of();
+        return getEntityManager()
+                .createQuery(
+                        "SELECT t FROM PaymentTransaction t " +
+                                "JOIN FETCH t.book b JOIN FETCH b.author JOIN FETCH b.category " +
+                                "WHERE t.paymentHistory.id IN :paymentIds " +
+                                "ORDER BY t.createdAt ASC",
+                        PaymentTransaction.class)
+                .setParameter("paymentIds", paymentIds)
                 .getResultList();
     }
 }

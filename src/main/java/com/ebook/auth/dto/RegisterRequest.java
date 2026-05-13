@@ -12,9 +12,11 @@ import lombok.*;
 @AllArgsConstructor
 public class RegisterRequest {
     @NotBlank(message = "First name is required")
+    @Size(max = 100, message = "First name must not exceed 100 characters")
     private String firstName;
 
     @NotBlank(message = "Last name is required")
+    @Size(max = 100, message = "Last name must not exceed 100 characters")
     private String lastName;
 
     @NotBlank(message = "Email is required")
@@ -22,10 +24,11 @@ public class RegisterRequest {
     private String email;
 
     @NotBlank(message = "Password is required")
-    @Size(min = 8, message = "Password must be at least 8 characters long")
+    @Size(min = 8, max = 128, message = "Password must be between 8 and 128 characters")
     private String password;
 
     @NotBlank(message = "User type is required")
+    @Size(max = 20, message = "User type must not exceed 20 characters")
     private String userType;
 
 }

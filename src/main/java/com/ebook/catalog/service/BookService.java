@@ -30,7 +30,12 @@ import org.jboss.logging.Logger;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @ApplicationScoped
@@ -48,7 +53,7 @@ public class BookService {
     @ConfigProperty(name = "storage.local.public-base-url", defaultValue = "/ebook/files")
     String publicFileBaseUrl;
 
-    @ConfigProperty(name = "app.backend-url", defaultValue = "https://pulmo-be.onrender.com")
+    @ConfigProperty(name = "app.backend-url", defaultValue = "http://localhost:8080/ebook")
     String backendBaseUrl;
 
     public BookService(BookRepository bookRepository, CategoryRepository categoryRepository,
@@ -172,8 +177,10 @@ public class BookService {
 
     @Transactional
     public List<BookResponse> getMyBooks(UUID authorId) {
-        return bookRepository.findByAuthor(authorId).stream()
-                .map(this::toResponse)
+        List<Book> books = bookRepository.findByAuthor(authorId);
+        Map<UUID, String> names = batchAuthorNames(books);
+        return books.stream()
+                .map(b -> toResponse(b, names))
                 .toList();
     }
 
@@ -236,15 +243,19 @@ public class BookService {
 
     @Transactional
     public List<BookResponse> getAllBooksForAdmin() {
-        return bookRepository.findAllWithDetails().stream()
-                .map(this::toResponse)
+        List<Book> books = bookRepository.findAllWithDetails();
+        Map<UUID, String> names = batchAuthorNames(books);
+        return books.stream()
+                .map(b -> toResponse(b, names))
                 .toList();
     }
 
     @Transactional
     public List<BookResponse> getPendingBooks() {
-        return bookRepository.findPending().stream()
-                .map(this::toResponse)
+        List<Book> books = bookRepository.findPending();
+        Map<UUID, String> names = batchAuthorNames(books);
+        return books.stream()
+                .map(b -> toResponse(b, names))
                 .toList();
     }
 
@@ -267,22 +278,28 @@ public class BookService {
 
     @Transactional
     public List<BookResponse> getPublishedBooks() {
-        return bookRepository.findPublished().stream()
-                .map(this::toResponse)
+        List<Book> books = bookRepository.findPublished();
+        Map<UUID, String> names = batchAuthorNames(books);
+        return books.stream()
+                .map(b -> toResponse(b, names))
                 .toList();
     }
 
     @Transactional
     public List<BookResponse> getPublishedBooksByCategory(UUID categoryId) {
-        return bookRepository.findPublishedByCategory(categoryId).stream()
-                .map(this::toResponse)
+        List<Book> books = bookRepository.findPublishedByCategory(categoryId);
+        Map<UUID, String> names = batchAuthorNames(books);
+        return books.stream()
+                .map(b -> toResponse(b, names))
                 .toList();
     }
 
     @Transactional
     public List<BookResponse> getPublishedBooksByAuthor(UUID authorId) {
-        return bookRepository.findPublishedByAuthor(authorId).stream()
-                .map(this::toResponse)
+        List<Book> books = bookRepository.findPublishedByAuthor(authorId);
+        Map<UUID, String> names = batchAuthorNames(books);
+        return books.stream()
+                .map(b -> toResponse(b, names))
                 .toList();
     }
 
@@ -290,50 +307,50 @@ public class BookService {
 
     @Transactional
     public PagedResponse<BookResponse> getMyBooks(UUID authorId, PageRequest req) {
-        return PagedResponse.of(
-                bookRepository.findByAuthorPage(authorId, req),
-                bookRepository.countByAuthor(authorId),
-                req, this::toResponse);
+        List<Book> books = bookRepository.findByAuthorPage(authorId, req);
+        Map<UUID, String> names = batchAuthorNames(books);
+        return PagedResponse.of(books, bookRepository.countByAuthor(authorId),
+                req, b -> toResponse(b, names));
     }
 
     @Transactional
     public PagedResponse<BookResponse> getAllBooksForAdmin(PageRequest req) {
-        return PagedResponse.of(
-                bookRepository.findAllWithDetailsPage(req),
-                bookRepository.countAll(),
-                req, this::toResponse);
+        List<Book> books = bookRepository.findAllWithDetailsPage(req);
+        Map<UUID, String> names = batchAuthorNames(books);
+        return PagedResponse.of(books, bookRepository.countAll(),
+                req, b -> toResponse(b, names));
     }
 
     @Transactional
     public PagedResponse<BookResponse> getPendingBooks(PageRequest req) {
-        return PagedResponse.of(
-                bookRepository.findPendingPage(req),
-                bookRepository.countPending(),
-                req, this::toResponse);
+        List<Book> books = bookRepository.findPendingPage(req);
+        Map<UUID, String> names = batchAuthorNames(books);
+        return PagedResponse.of(books, bookRepository.countPending(),
+                req, b -> toResponse(b, names));
     }
 
     @Transactional
     public PagedResponse<BookResponse> getPublishedBooks(PageRequest req) {
-        return PagedResponse.of(
-                bookRepository.findPublishedPage(req),
-                bookRepository.countPublished(),
-                req, this::toResponse);
+        List<Book> books = bookRepository.findPublishedPage(req);
+        Map<UUID, String> names = batchAuthorNames(books);
+        return PagedResponse.of(books, bookRepository.countPublished(),
+                req, b -> toResponse(b, names));
     }
 
     @Transactional
     public PagedResponse<BookResponse> getPublishedBooksByCategory(UUID categoryId, PageRequest req) {
-        return PagedResponse.of(
-                bookRepository.findPublishedByCategoryPage(categoryId, req),
-                bookRepository.countPublishedByCategory(categoryId),
-                req, this::toResponse);
+        List<Book> books = bookRepository.findPublishedByCategoryPage(categoryId, req);
+        Map<UUID, String> names = batchAuthorNames(books);
+        return PagedResponse.of(books, bookRepository.countPublishedByCategory(categoryId),
+                req, b -> toResponse(b, names));
     }
 
     @Transactional
     public PagedResponse<BookResponse> getPublishedBooksByAuthor(UUID authorId, PageRequest req) {
-        return PagedResponse.of(
-                bookRepository.findPublishedByAuthorPage(authorId, req),
-                bookRepository.countPublishedByAuthor(authorId),
-                req, this::toResponse);
+        List<Book> books = bookRepository.findPublishedByAuthorPage(authorId, req);
+        Map<UUID, String> names = batchAuthorNames(books);
+        return PagedResponse.of(books, bookRepository.countPublishedByAuthor(authorId),
+                req, b -> toResponse(b, names));
     }
 
     @Transactional
@@ -358,9 +375,13 @@ public class BookService {
     }
 
     private User findAdminUser() {
+        // BookApprovalLog.sender and .receiver are NOT NULL at the DB level, so every caller
+        // would trip a constraint violation (→ 500) anyway if we returned null here.
+        // Fail fast with a clean 404 so the admin sees a useful message instead.
         String adminEmail = "taskt600@gmail.com";
         return userRepository.findByEmail(adminEmail)
-                .orElse(null); // Graceful fallback — admin may not exist yet
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Admin user not configured — run the seeder at POST /admin/seed"));
     }
 
     private Book findBookOrThrow(UUID bookId) {
@@ -401,6 +422,60 @@ public class BookService {
         return (first + " " + last).trim();
     }
 
+    private Map<UUID, String> batchAuthorNames(Collection<Book> books) {
+        if (books == null || books.isEmpty()) return Map.of();
+        Set<UUID> authorIds = new HashSet<>();
+        Map<UUID, String> fallbackEmails = new HashMap<>();
+        for (Book b : books) {
+            User author = b.getAuthor();
+            if (author == null) continue;
+            authorIds.add(author.getId());
+            fallbackEmails.putIfAbsent(author.getId(), author.getEmail());
+        }
+        Map<UUID, String> byId = new HashMap<>();
+        for (UserProfile p : userProfileRepository.findByUserIds(authorIds)) {
+            String name = fullName(p);
+            if (!name.isBlank()) {
+                byId.put(p.getUser().getId(), name);
+            }
+        }
+        Map<UUID, String> result = new HashMap<>();
+        for (UUID id : authorIds) {
+            result.put(id, byId.getOrDefault(id, fallbackEmails.get(id)));
+        }
+        return result;
+    }
+
+    private BookResponse toResponse(Book book, Map<UUID, String> authorNames) {
+        User author = book.getAuthor();
+        String name = (author != null && authorNames != null)
+                ? authorNames.getOrDefault(author.getId(), author.getEmail())
+                : resolveAuthorName(author);
+        return BookResponse.builder()
+                .id(book.getId())
+                .title(book.getTitle())
+                .description(book.getDescription())
+                .price(book.getPrice())
+                .discount(book.getDiscount())
+                .keywords(book.getKeywords())
+                .publishedDate(book.getPublishedDate())
+                .pages(book.getPages())
+                .coverUrl(book.getCoverUrl())
+                .previewUrl(book.getPreviewUrl())
+                .bookUrl(book.getFileKey())
+                .versionNumber(book.getVersionNumber())
+                .isPublished(book.isPublished())
+                .status(book.getStatus().name())
+                .rejectionReason(book.getRejectionReason())
+                .categoryId(book.getCategory().getId())
+                .categoryName(book.getCategory().getName())
+                .authorId(author != null ? author.getId() : null)
+                .authorName(name)
+                .createdAt(book.getCreatedAt())
+                .updatedAt(book.getUpdatedAt())
+                .build();
+    }
+
     private Category findActiveCategoryOrThrow(UUID categoryId) {
         Category category = categoryRepository.findByIdOptional(categoryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
@@ -422,7 +497,7 @@ public class BookService {
                 .pages(book.getPages())
                 .coverUrl(book.getCoverUrl())
                 .previewUrl(book.getPreviewUrl())
-                .bookUrl(fileKeyToUrl(book.getFileKey()))
+                .bookUrl(book.getFileKey())
                 .versionNumber(book.getVersionNumber())
                 .isPublished(book.isPublished())
                 .status(book.getStatus().name())

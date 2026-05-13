@@ -21,7 +21,7 @@ public class Session extends BaseEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "refresh_token_hash", nullable = false)
+    @Column(name = "refresh_token_hash", nullable = false, unique = true)
     private String refreshTokenHash;
 
     @ManyToOne(fetch = FetchType.LAZY)

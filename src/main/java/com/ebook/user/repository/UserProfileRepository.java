@@ -6,6 +6,7 @@ import com.ebook.common.repository.BaseRepository;
 import com.ebook.user.entity.UserProfile;
 import jakarta.enterprise.context.ApplicationScoped;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -20,6 +21,15 @@ public class UserProfileRepository extends BaseRepository<UserProfile, UUID> {
 
     public Optional<UserProfile> findByUserId(UUID userId) {
         return find("user.id", userId).firstResultOptional();
+    }
+
+    public List<UserProfile> findByUserIds(Collection<UUID> userIds) {
+        if (userIds == null || userIds.isEmpty()) return List.of();
+        return getEntityManager()
+                .createQuery("SELECT p FROM UserProfile p JOIN FETCH p.user u WHERE u.id IN :ids",
+                        UserProfile.class)
+                .setParameter("ids", userIds)
+                .getResultList();
     }
 
     public List<UserProfile> findAllByUserType(UserType userType) {
