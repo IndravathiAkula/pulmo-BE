@@ -1,0 +1,52 @@
+# ── Gradle ─────────────────────────────────────────
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+gradle-app.setting
+
+# ── Legacy / Maven leftovers ──────────────────────
+target/
+
+# ── IDE ───────────────────────────────────────────
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+nbproject/
+nb-configuration.xml
+bin/
+
+# ── OS / editor cruft ─────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# ── Logs & diagnostic output ──────────────────────
+*.log
+dev_output.txt
+build_output.txt
+build.log
+deps.txt
+project_files.txt
+hs_err_pid*
+
+# ── Local env / secrets ───────────────────────────
+.env
+.env.*
+application-local.properties.bak
+*.pem
+*.key
+*.p12
+*.jks
+
+# ── Coverage / reports ────────────────────────────
+.coverage/
+coverage/
+*.exec
+
