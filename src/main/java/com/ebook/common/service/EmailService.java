@@ -1,7 +1,7 @@
 package com.ebook.common.service;
 
 import io.quarkus.mailer.Mail;
-import io.quarkus.mailer.Mailer;
+import io.quarkus.mailer.reactive.ReactiveMailer;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.jboss.logging.Logger;
 
@@ -10,10 +10,10 @@ public class EmailService {
 
     private static final Logger LOG = Logger.getLogger(EmailService.class);
 
-    private final Mailer mailer;
+    private final ReactiveMailer mailer;
     private final ConfigService configService;
 
-    public EmailService(Mailer mailer, ConfigService configService) {
+    public EmailService(ReactiveMailer mailer, ConfigService configService) {
         this.mailer = mailer;
         this.configService = configService;
     }
@@ -134,13 +134,22 @@ public class EmailService {
         sendHtml(adminEmail, "Book Approval Required: " + bookTitle, html);
     }
 
+    /**
+     * Fire-and-forget. Returns immediately; the actual SMTP send happens on the Vert.x
+     * event loop. Callers must never assume the email has been delivered when this returns.
+     *
+     * <p>Was previously blocking via {@code Mailer}; that path could hold a JTA transaction
+     * open for the full SMTP timeout (60 s by default), which exceeded the transaction
+     * timeout and caused commits to fail with {@code RollbackException} on slow SMTP hops.
+     */
     private void sendHtml(String to, String subject, String html) {
-        try {
-            LOG.infof("Attempting SMTP send to=%s, subject=%s", to, subject);
-            mailer.send(Mail.withHtml(to, subject, html));
-            LOG.infof("Email successfully sent to %s", to);
-        } catch (Exception e) {
-            LOG.errorf(e, "SMTP FAILED — to=%s, subject=%s, error=%s", to, subject, e.getMessage());
-        }
+        LOG.infof("Dispatching SMTP send to=%s, subject=%s", to, subject);
+        mailer.send(Mail.withHtml(to, subject, html))
+                .subscribe()
+                .with(
+                        ignored -> LOG.infof("Email successfully sent to %s", to),
+                        failure -> LOG.errorf(failure, "SMTP FAILED — to=%s, subject=%s, error=%s",
+                                to, subject, failure.getMessage())
+                );
     }
 }

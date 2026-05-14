@@ -107,11 +107,13 @@ public class BookService {
         String newPreviewKey = FileKeyUtil.toKey(request.getPreviewUrl());
 
         // Spec §4.5: substantive changes on an APPROVED book re-queue it for review; cosmetic ones don't.
+        // Compare normalized keys on both sides — legacy rows may still hold absolute URLs, which
+        // would otherwise never match a freshly-normalized key and would requeue every update.
         boolean substantiveChange =
                 !safeEquals(book.getTitle(), request.getTitle())
                 || !safeEquals(book.getDescription(), request.getDescription())
                 || !safeEquals(book.getPrice(), request.getPrice())
-                || !safeEquals(book.getPreviewUrl(), newPreviewKey)
+                || !safeEquals(FileKeyUtil.toKey(book.getPreviewUrl()), newPreviewKey)
                 || !safeEquals(book.getFileKey(), newFileKey)
                 || !safeEquals(book.getCategory().getId(), request.getCategoryId());
 
